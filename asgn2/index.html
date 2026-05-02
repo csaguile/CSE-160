@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blocky Animal</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      display: flex;
+      gap: 20px;
+      padding: 20px;
+      flex-wrap: wrap;
+    }
+    canvas {
+      border: 1px solid #555;
+      background: black;
+    }
+    .controls {
+      max-width: 360px;
+      display: grid;
+      gap: 12px;
+    }
+    .row {
+      background: #1d1d1d;
+      padding: 10px;
+      border-radius: 8px;
+    }
+    button {
+      margin: 4px;
+      padding: 6px 10px;
+    }
+    label {
+      display: block;
+      margin-top: 8px;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    #fps {
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body onload="main()">
+  <div>
+    <canvas id="webgl" width="600" height="600">
+      Please use a browser that supports canvas.
+    </canvas>
+    <p id="fps">FPS:</p>
+    <p>Drag on the canvas to rotate. Shift-click for poke animation.</p>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <button id="playAllButton">Play All</button>
+      <button id="stopAllButton">Stop All</button>
+    </div>
+
+    <div class="row">
+      <label for="angleSlide">Global Y Rotation</label>
+      <input id="angleSlide" type="range" min="-180" max="180" value="0" />
+    </div>
+
+    <div class="row">
+      <strong>Leg Animation</strong><br />
+      <button id="yellowOnButton">Legs On</button>
+      <button id="yellowOffButton">Legs Off</button>
+      <label for="yellowAngleSlide">Leg Angle</label>
+      <input id="yellowAngleSlide" type="range" min="-45" max="45" value="0" />
+    </div>
+
+    <div class="row">
+      <strong>Neck Animation</strong><br />
+      <button id="magentaOnButton">Neck On</button>
+      <button id="magentaOffButton">Neck Off</button>
+      <label for="magentaAngleSlide">Neck Angle</label>
+      <input id="magentaAngleSlide" type="range" min="-45" max="45" value="0" />
+    </div>
+
+    <div class="row">
+      <strong>Tail Animation</strong><br />
+      <button id="tailOnButton">Tail On</button>
+      <button id="tailOffButton">Tail Off</button>
+    
+      <label for="tailAngleSlide">Tail Angle</label>
+      <input id="tailAngleSlide" type="range" min="-20" max="10" value="0" />
+    </div>
+
+    
+  </div>
+
+  <script src="lib/webgl-utils.js"></script>
+  <script src="lib/cuon-utils.js"></script>
+  <script src="lib/cuon-matrix.js"></script>
+  <script src="Cube.js"></script>
+  <script src="Cylinder.js"></script>
+  <script src="blockyanimal.js"></script>
+</body>
+</html>
