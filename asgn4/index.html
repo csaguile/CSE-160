@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Assignment 0 - Phong Lighting</title>
+  <style>
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:#111;color:#eee}
+    #wrap{display:grid;grid-template-columns: 1fr 340px;gap:12px; height:100vh; padding:12px; box-sizing:border-box;}
+    canvas{width:100%;height:100%;background:#000;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.45)}
+    #ui{background:#1a1a1a;border-radius:10px;padding:12px;overflow:auto}
+    h2{margin:0 0 8px 0;font-size:18px}
+    .row{display:flex;align-items:center;gap:10px;margin:10px 0}
+    label{flex:1; font-size:13px; color:#ddd}
+    input[type="range"]{flex:1}
+    input[type="color"]{width:52px;height:32px;border:none;background:transparent}
+    button{width:100%;padding:10px;border-radius:10px;border:1px solid #333;background:#222;color:#eee;cursor:pointer}
+    button:hover{background:#2a2a2a}
+    .hint{font-size:12px;color:#bbb;line-height:1.35;margin-top:10px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#2a2a2a;border:1px solid #333;font-size:12px;margin-right:6px}
+    .file{width:100%;padding:8px;border-radius:10px;border:1px solid #333;background:#111;color:#ddd}
+  </style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="webgl" width="960" height="720"></canvas>
+
+    <div id="ui">
+      <h2>Controls</h2>
+
+      <div class="row">
+        <label><span class="pill">Camera</span> Orbit</label>
+        <input id="camOrbit" type="range" min="0" max="360" step="1" value="35">
+      </div>
+      <div class="row">
+        <label><span class="pill">Camera</span> Elevation</label>
+        <input id="camElev" type="range" min="-80" max="80" step="1" value="15">
+      </div>
+      <div class="row">
+        <label><span class="pill">Camera</span> Distance</label>
+        <input id="camDist" type="range" min="3" max="18" step="0.1" value="9">
+      </div>
+
+      <hr style="border:0;border-top:1px solid #2d2d2d;margin:12px 0">
+
+      <div class="row">
+        <label><span class="pill">Point</span> Spin</label>
+        <input id="spin" type="range" min="0" max="1" step="1" value="1">
+      </div>
+      <div class="row">
+        <label><span class="pill">Point</span> Radius</label>
+        <input id="lightRadius" type="range" min="1" max="12" step="0.1" value="6">
+      </div>
+      <div class="row">
+        <label><span class="pill">Point</span> Height</label>
+        <input id="lightY" type="range" min="-2" max="10" step="0.1" value="4">
+      </div>
+      <div class="row">
+        <label><span class="pill">Light</span> Color</label>
+        <input id="lightColor" type="color" value="#ffffff">
+      </div>
+
+      <div class="row">
+        <button id="toggleLighting">Lighting: ON</button>
+      </div>
+      <div class="row">
+        <button id="toggleNormals">Normal View: OFF</button>
+      </div>
+      <div class="row">
+        <button id="togglePoint">Point Light: ON</button>
+      </div>
+      <div class="row">
+        <button id="toggleSpot">Spot Light: ON</button>
+      </div>
+
+      <hr style="border:0;border-top:1px solid #2d2d2d;margin:12px 0">
+
+      <div class="row">
+        <label><span class="pill">Spot</span> Cutoff</label>
+        <input id="spotCutoff" type="range" min="5" max="60" step="1" value="18">
+      </div>
+      <div class="row">
+        <label><span class="pill">Spot</span> Exponent</label>
+        <input id="spotExp" type="range" min="1" max="128" step="1" value="24">
+      </div>
+
+      <hr style="border:0;border-top:1px solid #2d2d2d;margin:12px 0">
+
+      <div class="row">
+        <label><span class="pill">OBJ</span> Load</label>
+      </div>
+      <input id="objFile" class="file" type="file" accept=".obj"/>
+
+      <div class="hint">
+        <div><b>Keyboard</b>: <span class="pill">W/A/S/D</span> pan camera target • <span class="pill">Q/E</span> up/down</div>
+        <div style="margin-top:8px">Scene: ground cube, center cube, 2 spheres, point light marker cube, spotlight, OBJ model after loading.</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="./cuon-utils.js"></script>
+  <script src="./cuon-matrix.js"></script>
+  <script src="./webgl-utils.js"></script>
+  <script src="./webgl-debug.js"></script>
+  <script src="./objloader.js"></script>
+  <script src="./shapes.js"></script>
+  <script src="./dino.js"></script>
+  <script src="./main.js"></script>
+</body>
+</html>
