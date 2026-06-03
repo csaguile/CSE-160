@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Three.js Campfire Scene</title>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: Arial, sans-serif; background: #111; }
+    #info {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      max-width: 390px;
+      padding: 12px 14px;
+      color: white;
+      background: rgba(0,0,0,0.55);
+      border-radius: 10px;
+      line-height: 1.35;
+      font-size: 14px;
+    }
+    #info strong { color: #ffd36a; }
+  </style>
+
+  <!-- Three.js import map. Run this through a local server, not by double-clicking. -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <div id="info">
+    <strong>Wow Point:</strong> This scene includes a small interactive campfire world: animated flames, a rotating moon, floating glowing fireflies, orbit camera controls, shadows, a skybox, and a loaded custom 3D model (Flower). Drag the mouse to explore and scroll to zoom.
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
