@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assignment 3 - 3D World</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+      background: #000;
+    }
+
+    #instructions {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      color: white;
+      background: rgba(0, 0, 0, 0.55);
+      padding: 12px 14px;
+      border-radius: 10px;
+      max-width: 390px;
+      line-height: 1.4;
+      z-index: 10;
+    }
+
+    #centerDot {
+      position: fixed;
+      left: 50%;
+      top: 50%;
+      width: 8px;
+      height: 8px;
+      margin-left: -4px;
+      margin-top: -4px;
+      border-radius: 50%;
+      background: white;
+      opacity: 0.75;
+      z-index: 9;
+    }
+  </style>
+</head>
+<body>
+  <div id="instructions">
+    <b>First-Person 3D World</b><br />
+    Click the screen to enable mouse look and ESC to exit<br />
+    W/A/S/D = move &nbsp; | &nbsp; Q/E = turn<br />
+    Left click = delete block &nbsp; | &nbsp; Right click = add block<br />
+    Goal: find the baby dinos near the pond (be quick, it'll be harder to look during the night).
+  </div>
+  <div id="centerDot"></div>
+
+  <script type="module">
+    import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+
+    // ---------- BASIC THREE.JS SETUP ----------
+    const scene = new THREE.Scene();
+    const skyColor = new THREE.Color(0x9bd3ff);
+    scene.background = skyColor;
+
+    const camera = new THREE.PerspectiveCamera(
+      60,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(16, 2.2, 28);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+
+    // ---------- LIGHTING ----------
+    const ambient = new THREE.AmbientLight(0xffffff, 0.65);
+    scene.add(ambient);
+
+    const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+    sun.position.set(20, 50, 10);
+    scene.add(sun);
+
+    // ---------- PROCEDURAL TEXTURES ----------
+    function makeTexture(color1, color2, gridSize = 8) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 128;
+      canvas.height = 128;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = color1;
+      ctx.fillRect(0, 0, 128, 128);
+
+      ctx.fillStyle = color2;
+      for (let y = 0; y < 128; y += gridSize) {
+        for (let x = 0; x < 128; x += gridSize) {
+          if ((x / gridSize + y / gridSize) % 2 === 0) {
+            ctx.fillRect(x, y, gridSize, gridSize);
+          }
+        }
+      }
+
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.magFilter = THREE.NearestFilter;
+      texture.minFilter = THREE.NearestMipMapNearestFilter;
+      texture.wrapS = THREE.RepeatWrapping;
+      texture.wrapT = THREE.RepeatWrapping;
+      return texture;
+    }
+
+    const wallTexture = makeTexture('#7b5f46', '#5e4735', 16);
+    const stoneTexture = makeTexture('#777777', '#555555', 12);
+    const grassTexture = makeTexture('#4c9a42', '#39742f', 8);
+    const sandTexture = makeTexture('#d8c27a', '#bca65f', 8);
+
+    const wallMat = new THREE.MeshLambertMaterial({ map: wallTexture });
+    const stoneMat = new THREE.MeshLambertMaterial({ map: stoneTexture });
+    const grassMat = new THREE.MeshLambertMaterial({ map: grassTexture });
+    const sandMat = new THREE.MeshLambertMaterial({ map: sandTexture });
+    const skyMat = new THREE.MeshBasicMaterial({ color: 0x74b9ff, side: THREE.BackSide });
+    const pondMat = new THREE.MeshLambertMaterial({ color: 0x32c7ff, emissive: 0x114466 });
+
+    const cubeGeo = new THREE.BoxGeometry(1, 1, 1);
+
+    // ---------- SKY BOX ----------
+    const sky = new THREE.Mesh(new THREE.BoxGeometry(500, 500, 500), skyMat);
+    sky.material.color = new THREE.Color(0x74b9ff);
+    sky.position.set(16, 80, 16);
+    scene.add(sky);
+
+    // ---------- GROUND ----------
+    const groundGeo = new THREE.BoxGeometry(32, 0.1, 32);
+    const ground = new THREE.Mesh(groundGeo, grassMat);
+    ground.position.set(15.5, -0.05, 15.5);
+    scene.add(ground);
+
+    // A little sandy path
+    const path = new THREE.Mesh(new THREE.BoxGeometry(5, 0.11, 32), sandMat);
+    path.position.set(16, 0.01, 15.5);
+    scene.add(path);
+
+    // Pond / goal area
+    const pond = new THREE.Mesh(new THREE.BoxGeometry(5, 0.12, 5), pondMat);
+    pond.position.set(25, 0.03, 6);
+    scene.add(pond);
+
+    // ---------- 32x32 MAP ----------
+    // Each number is the height of blocks at that x/z location.
+    const SIZE = 32;
+    const map = [];
+
+    for (let z = 0; z < SIZE; z++) {
+      const row = [];
+      for (let x = 0; x < SIZE; x++) {
+        let h = 0;
+
+        // Outer border walls
+        if (x === 0 || z === 0 || x === SIZE - 1 || z === SIZE - 1) h = 3;
+
+        // Maze-like inner walls
+        if (x === 6 && z > 2 && z < 25) h = 2;
+        if (x === 11 && z > 8 && z < 31) h = 3;
+        if (x === 21 && z > 2 && z < 24) h = 2;
+        if (z === 8 && x > 4 && x < 22) h = 2;
+        if (z === 15 && x > 10 && x < 29) h = 3;
+        if (z === 24 && x > 3 && x < 18) h = 2;
+
+        // Door gaps so the player can walk through
+        if ((x === 6 && z === 13) || (x === 11 && z === 21) || (x === 21 && z === 10)) h = 0;
+        if ((z === 8 && x === 15) || (z === 15 && x === 25) || (z === 24 && x === 8)) h = 0;
+
+        // Some taller landmarks
+        if ((x === 3 && z === 3) || (x === 28 && z === 28) || (x === 24 && z === 6)) h = 4;
+
+        row.push(h);
+      }
+      map.push(row);
+    }
+
+    const blocks = new Map();
+
+    function keyFor(x, y, z) {
+      return `${x},${y},${z}`;
+    }
+
+    function addBlock(x, y, z, material = wallMat) {
+      if (x < 0 || x >= SIZE || z < 0 || z >= SIZE || y < 0 || y >= 4) return;
+      const key = keyFor(x, y, z);
+      if (blocks.has(key)) return;
+
+      const block = new THREE.Mesh(cubeGeo, material);
+      block.position.set(x, y + 0.5, z);
+      block.userData.grid = { x, y, z };
+      scene.add(block);
+      blocks.set(key, block);
+    }
+
+    function removeBlock(x, y, z) {
+      const key = keyFor(x, y, z);
+      const block = blocks.get(key);
+      if (!block) return;
+      scene.remove(block);
+      blocks.delete(key);
+    }
+
+    function rebuildWorldFromMap() {
+      for (let z = 0; z < SIZE; z++) {
+        for (let x = 0; x < SIZE; x++) {
+          for (let y = 0; y < map[z][x]; y++) {
+            const material = y >= 2 ? stoneMat : wallMat;
+            addBlock(x, y, z, material);
+          }
+        }
+      }
+    }
+
+    rebuildWorldFromMap();
+
+    // ---------- SIMPLE ANIMAL / STORY ELEMENT ----------
+ function makeDino(x, z, scale = 1) {
+  const group = new THREE.Group();
+
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x267d2e });
+  const darkBodyMat = new THREE.MeshLambertMaterial({ color: 0x236b2b });
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0x050508 });
+
+  function box(w, h, d, mat, px, py, pz, rz = 0) {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
+    mesh.position.set(px, py, pz);
+    mesh.rotation.z = rz;
+    group.add(mesh);
+    return mesh;
+  }
+
+  // body
+  box(1.2, 0.65, 0.75, bodyMat, 0, 0.95, 0);
+
+  // neck + hdead + snout
+  box(0.3, 1.05, 0.32, bodyMat, 0.45, 1.55, 0);
+  box(0.9, 0.75, 0.5, bodyMat, 0.75, 2.15, 0);
+  box(0.5, 0.35, 0.45, bodyMat, 1.18, 2., 0);
+
+  // eyes
+  const eyeGeo = new THREE.SphereGeometry(0.08, 16, 16);
+  const eye1 = new THREE.Mesh(eyeGeo, eyeMat);
+  eye1.position.set(1.05, 2.22, 0.27);
+  group.add(eye1);
+
+  const eye2 = eye1.clone();
+  eye2.position.z = -0.27;
+  group.add(eye2);
+
+  // tail, angled like old version
+  box(0.75, 0.25, 0.45, darkBodyMat, -0.75, 1.05, 0, -0.45);
+  box(0.8, 0.22, 0.42, darkBodyMat, -1.15, 1.5, 0, -1.3);
+    //box(0.55, 0.18, 0.36, darkBodyMat, -1.d45, 1.45, 0, 1.05);
+
+  // arms + hands
+  for (const side of [-1, 1]) {
+    box(0.55, 0.12, 0.16, bodyMat, 0.55, 1.02, side * 0.45, side * -0.25);
+    box(0.2, 0.18, 0.18, bodyMat, 0.8, 0.93, side * 0.48);
+  }
+
+  // legs + feet
+  box(0.28, 0.55, 0.28, bodyMat, -0.25, 0.35, -0.22, -0.3);
+  box(0.22, 0.38, 0.22, bodyMat, -0.15, 0.05, -0.22, 0.35);
+  box(0.45, 0.12, 0.2, bodyMat, 0.05, -0.12, -0.22);
+
+  box(0.28, 0.55, 0.28, darkBodyMat, -0.25, 0.35, 0.22, -0.3);
+  box(0.22, 0.38, 0.22, darkBodyMat, -0.15, 0.05, 0.22, 0.35);
+  box(0.45, 0.12, 0.2, darkBodyMat, 0.05, -0.12, 0.22);
+
+  group.position.set(x, 0.15, z);
+  group.scale.set(scale, scale, scale);
+  scene.add(group);
+  return group;
+}
+
+    const dinos = [
+      makeDino(25, 7, 0.9),
+      makeDino(27, 7, 0.55),
+      makeDino(23, 5, 0.55),
+      makeDino(25, 4, 0.55)
+    ];
+
+    // ---------- CAMERA MOVEMENT ----------
+    const keys = {};
+    let yaw = Math.PI;
+    let pitch = 0;
+    const moveSpeed = 4.5;
+    const turnSpeed = 2.5;
+
+    function updateCameraRotation() {
+      const direction = new THREE.Vector3(
+        Math.sin(yaw) * Math.cos(pitch),
+        Math.sin(pitch),
+        Math.cos(yaw) * Math.cos(pitch)
+      );
+      camera.lookAt(camera.position.clone().add(direction));
+    }
+
+    updateCameraRotation();
+
+    document.addEventListener('keydown', (event) => {
+      keys[event.key.toLowerCase()] = true;
+    });
+
+    document.addEventListener('keyup', (event) => {
+      keys[event.key.toLowerCase()] = false;
+    });
+
+    function canMoveTo(pos) {
+      const x = Math.floor(pos.x + 0.5);
+      const z = Math.floor(pos.z + 0.5);
+      if (x < 0 || x >= SIZE || z < 0 || z >= SIZE) return false;
+      return map[z][x] === 0;
+    }
+
+    // ---------- MOUSE LOOK ----------
+    renderer.domElement.addEventListener('click', () => {
+      renderer.domElement.requestPointerLock();
+    });
+
+    document.addEventListener('mousemove', (event) => {
+      if (document.pointerLockElement !== renderer.domElement) return;
+
+      yaw -= event.movementX * 0.0025;
+      pitch -= event.movementY * 0.0025;
+      pitch = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, pitch));
+      updateCameraRotation();
+    });
+
+    // ---------- ADD / DELETE BLOCKS ----------
+    const raycaster = new THREE.Raycaster();
+
+    function getBlockInFront() {
+      raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
+      const blockMeshes = Array.from(blocks.values());
+      const hits = raycaster.intersectObjects(blockMeshes);
+      return hits.length > 0 ? hits[0] : null;
+    }
+
+    window.addEventListener('contextmenu', (event) => event.preventDefault());
+
+    document.addEventListener('mousedown', (event) => {
+      const hit = getBlockInFront();
+      if (!hit) return;
+
+      const { x, y, z } = hit.object.userData.grid;
+
+      // Left click deletes the selected block.
+      if (event.button === 0) {
+        removeBlock(x, y, z);
+        map[z][x] = Math.max(0, map[z][x] - 1);
+      }
+
+      // Right click adds a block on the face that was clicked.
+      if (event.button === 2) {
+        const normal = hit.face.normal.clone();
+        normal.transformDirection(hit.object.matrixWorld);
+
+        const nx = x + Math.round(normal.x);
+        const ny = y + Math.round(normal.y);
+        const nz = z + Math.round(normal.z);
+
+        addBlock(nx, ny, nz, stoneMat);
+        if (nx >= 0 && nx < SIZE && nz >= 0 && nz < SIZE) {
+          map[nz][nx] = Math.max(map[nz][nx], ny + 1);
+        }
+      }
+    });
+
+    // ---------- GOAL SYSTEM ----------
+    const originalText = document.getElementById("instructions").innerHTML;
+
+let goalReached = false;
+function checkGoal() {
+  const goalPos = new THREE.Vector3(25, 0, 8);
+
+  if (
+    !goalReached &&
+    camera.position.distanceTo(goalPos) < 3
+  ) {
+    goalReached = true;
+
+    const instructions = document.getElementById("instructions");
+
+instructions.innerHTML =
+  "<b>🎉 You found the baby dinos!</b><br>" +
+  "Thanks for exploring the world!";
+
+// Remove after 5 seconds
+setTimeout(() => {
+  instructions.innerHTML = originalText;
+}, 10000);
+  }
+}
+
+    // ---------- ANIMATION LOOP ----------
+    const clock = new THREE.Clock();
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+
+      // ---------- DAY/NIGHT CYCLE ----------
+const dayTime = performance.now() * 0.0001;
+
+// Move the sun in a circle
+sun.position.x = Math.sin(dayTime) * 100;
+sun.position.y = Math.cos(dayTime) * 100;
+
+// Change sun brightness
+sun.intensity = Math.max(0.1, Math.cos(dayTime) * 0.85);
+
+// Change ambient brightness
+ambient.intensity = 0.2 + Math.max(0, Math.cos(dayTime)) * 0.45;
+
+// Change sky color
+const brightness = 0.15 + Math.max(0, Math.cos(dayTime)) * 0.85;
+scene.background.setRGB(
+  0.4 * brightness,
+  0.7 * brightness,
+  brightness
+);
+
+sky.material.color.setRGB(
+  0.4 * brightness,
+  0.7 * brightness,
+  brightness
+);
+
+      const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)).normalize();
+      const right = new THREE.Vector3(forward.z, 0, -forward.x).normalize();
+
+      let velocity = new THREE.Vector3();
+      if (keys['w']) velocity.add(forward);
+      if (keys['s']) velocity.sub(forward);
+      if (keys['d']) velocity.sub(right);
+      if (keys['a']) velocity.add(right);
+      if (keys['q']) yaw += turnSpeed * dt;
+      if (keys['e']) yaw -= turnSpeed * dt;
+
+      if (velocity.length() > 0) {
+        velocity.normalize().multiplyScalar(moveSpeed * dt);
+        const next = camera.position.clone().add(velocity);
+        next.y = 2.2;
+        if (canMoveTo(next)) camera.position.copy(next);
+      }
+
+      updateCameraRotation();
+
+      // Tiny animation so the animals feel alive.
+      const t = performance.now() * 0.003;
+      dinos.forEach((dino, i) => {
+        dino.rotation.y = Math.sin(t + i) * 0.25;
+      });
+
+      checkGoal();
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // ---------- RESIZE ----------
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
